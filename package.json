@@ -5,6 +5,7 @@
   "description": "RESTful Payment Gateway API for Small Businesses",
   "main": "index.js",
   "scripts": {
+    "start": "node dist/index.js",
     "dev": "ts-node-dev --respawn src/index.ts",
     "build": "tsc",
     "test": "jest",
