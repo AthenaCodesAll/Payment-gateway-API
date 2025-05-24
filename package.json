@@ -1,7 +1,7 @@
 {
   "name": "payment_gateway_api",
   "version": "1.0.0",
-  "type": "module",
+  "type": "commonjs",
   "description": "RESTful Payment Gateway API for Small Businesses",
   "main": "index.js",
   "scripts": {

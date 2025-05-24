@@ -5,10 +5,10 @@ const http_status_codes_1 = require("http-status-codes");
 class ErrorHandler {
 }
 exports.ErrorHandler = ErrorHandler;
-// Centralized error handler middleware
-ErrorHandler.handle = (err, req, res, next) => {
+ErrorHandler.handle = (err, req, res, 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+_next) => {
     const statusCode = err.statusCode || http_status_codes_1.StatusCodes.INTERNAL_SERVER_ERROR;
-    // Send error response with status and message
     return res.status(statusCode).send({
         success: false,
         message: err.message,

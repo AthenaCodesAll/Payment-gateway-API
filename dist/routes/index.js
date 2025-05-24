@@ -4,12 +4,12 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
-const paystack_1 = __importDefault(require("./paystack"));
+const paystack_js_1 = __importDefault(require("./paystack.js"));
 const router = express_1.default.Router();
 const allRoutes = [
     {
         path: '/paystack',
-        route: paystack_1.default,
+        route: paystack_js_1.default,
     },
 ];
 allRoutes.forEach((route) => {
