@@ -5,8 +5,8 @@
     "target": "es6",
     "types": ["node", "jest"],
     "experimentalDecorators": true,
-    "emitDecoratorMetadata": true,
+    "emitDecoratorMetadata": true
   },
   "exclude": ["node_modules"],
-  "include": ["src", "tests"]
+  "include": ["src", "tests", "eslint.config.js"]
 }

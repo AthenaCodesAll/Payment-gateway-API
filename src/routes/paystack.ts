@@ -1,11 +1,11 @@
 import express from 'express';
 import { body, query } from 'express-validator';
-import paystackController from '../controllers/paystack';
+import paystackController from '../controllers/paystack.js';
 import { 
   paymentInitLimiter, 
   paymentVerifyLimiter, 
   paymentStatusLimiter 
-} from '../middlewares/rateLimiting'; 
+} from '../middlewares/rateLimiting.js'; 
 
 const paystackRoute = express.Router();
 

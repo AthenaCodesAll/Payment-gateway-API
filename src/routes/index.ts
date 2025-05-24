@@ -1,5 +1,5 @@
 import express from 'express';
-import paystackRoute from './paystack';
+import paystackRoute from './paystack.js';
 
 const router = express.Router();
 

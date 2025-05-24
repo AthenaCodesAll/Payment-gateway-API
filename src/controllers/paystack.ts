@@ -1,45 +1,51 @@
 import { Request, Response } from 'express';
 import { StatusCodes } from 'http-status-codes';
-import paystackApi, { InitializePaymentArgs } from '../api/paystackApi';
-import { Payment, PaymentStatus } from '../models/Payment';
-import { BadRequestError } from '../utils/ApiError';
-import { asyncWrapper } from '../utils/asyncWrapper';
+import paystackApi, { InitializePaymentArgs } from '../api/paystackApi.js';
+import { Payment, PaymentStatus } from '../models/Payment.js';
+import { BadRequestError } from '../utils/ApiError.js';
+import { asyncWrapper } from '../utils/asyncWrapper.js';
 
 interface InitiatePaymentRequest {
   customerName: string;
-  customerEmail?: string; // Made optional to support both naming conventions
+  customerEmail?: string;
   amount: number;
   callbackUrl?: string;
 }
 
+interface PaystackVerificationData {
+  status: 'success' | 'failed' | 'abandoned';
+  reference: string;
+  metadata?: Record<string, unknown>;
+}
+
+interface PaystackVerificationResponse {
+  status: boolean;
+  message: string;
+  data: PaystackVerificationData;
+}
+
 class PaystackController {
-   // Start payment process
-  initializePayment = asyncWrapper(async (req: Request, res: Response) => {
+  initializePayment = asyncWrapper(async (req: Request, res: Response): Promise<void> => {
     const { customerName, customerEmail, amount, callbackUrl }: InitiatePaymentRequest = req.body;
 
     const finalEmail = customerEmail;
 
-    // Validate required fields
     if (!customerName || !finalEmail || !amount) {
       throw new BadRequestError('Customer name, email, and amount are required');
     }
 
-    // Validate amount value
     if (amount <= 0 || isNaN(amount)) {
       throw new BadRequestError('Amount must be a positive number');
     }
 
-     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(finalEmail)) {
       throw new BadRequestError('Invalid email format');
     }
 
-     // Normalize inputs
     const normalizedEmail = finalEmail.toLowerCase().trim();
     const normalizedName = customerName.trim();
 
-     // Prepare payment details for API
     const paymentDetails: InitializePaymentArgs = {
       email: normalizedEmail,
       amount: Math.round(Number(amount) * 100),
@@ -54,26 +60,23 @@ class PaystackController {
     let payment;
 
     try {
-      // Call Paystack to initialize payment
       const paystackResponse = await paystackApi.initializePayment(paymentDetails);
 
       if (!paystackResponse || !paystackResponse.reference) {
         throw new Error('Invalid response from Paystack');
       }
 
-      // Save payment record
       payment = await Payment.create({
         customerName: normalizedName,
         customerEmail: normalizedEmail,
         amount: Number(amount),
         status: PaymentStatus.PENDING,
-        paymentReference: paystackResponse.reference,  // corrected field name here
+        paymentReference: paystackResponse.reference,
         authorizationUrl: paystackResponse.authorizationUrl,
         accessCode: paystackResponse.accessCode,
       });
 
-      // Respond with created payment info
-      return res.status(StatusCodes.CREATED).json({
+      res.status(StatusCodes.CREATED).json({
         success: true,
         message: 'Payment initialized successfully',
         data: {
@@ -87,17 +90,15 @@ class PaystackController {
           },
         },
       });
-    } catch (paystackError: any) {
-       // Mark payment as failed if error occurs
+    } catch (paystackError: unknown) {
       if (payment) {
         await payment.update({ status: PaymentStatus.FAILED });
       }
-      throw new BadRequestError(`Failed to initialize payment: ${paystackError.message}`);
+      throw new BadRequestError(`Failed to initialize payment: ${(paystackError as Error).message || 'Unknown error'}`);
     }
   });
 
-  // Verify payment from callback or manual check
-  verifyPayment = asyncWrapper(async (req: Request, res: Response) => {
+  verifyPayment = asyncWrapper(async (req: Request, res: Response): Promise<void> => {
     const reference = req.query.reference as string;
 
     if (!reference) {
@@ -110,25 +111,21 @@ class PaystackController {
       throw new BadRequestError('Payment not found');
     }
 
-    // Verify payment status from Paystack
-    const verificationResponse = await paystackApi.verifyPayment(reference);
+    const verificationResponse = await paystackApi.verifyPayment(reference) as unknown as PaystackVerificationResponse;
 
     if (!verificationResponse?.data) {
       throw new BadRequestError('Invalid payment verification response');
     }
 
-    const {
-      data: { metadata, reference: paymentReference, status: transactionStatus },
-    } = verificationResponse;
+    const { data: { status: transactionStatus } } = verificationResponse;
 
     if (transactionStatus === 'success') {
-       // Mark payment as completed
       await payment.update({
         status: PaymentStatus.COMPLETED,
         verified_at: new Date(),
       });
 
-      return res.status(StatusCodes.OK).json({
+      res.status(StatusCodes.OK).json({
         success: true,
         message: 'Payment verified successfully',
         data: {
@@ -142,14 +139,12 @@ class PaystackController {
         },
       });
     } else {
-      // Mark payment as failed if not successful
       await payment.update({ status: PaymentStatus.FAILED });
       throw new BadRequestError(`Payment verification failed with status: ${transactionStatus}`);
     }
   });
 
-  // Get current payment status by payment ID
-  getPaymentStatus = asyncWrapper(async (req: Request, res: Response) => {
+  getPaymentStatus = asyncWrapper(async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
 
     if (!id) {
@@ -162,10 +157,9 @@ class PaystackController {
       throw new BadRequestError('Payment not found');
     }
 
-    // If still pending, try to verify status with Paystack
     if (payment.paymentReference && payment.status === PaymentStatus.PENDING) {
       try {
-        const verificationResponse = await paystackApi.verifyPayment(payment.paymentReference);
+        const verificationResponse = await paystackApi.verifyPayment(payment.paymentReference) as unknown as PaystackVerificationResponse;
 
         if (verificationResponse?.data) {
           if (verificationResponse.data.status === 'success') {
@@ -177,15 +171,14 @@ class PaystackController {
             await payment.update({ status: PaymentStatus.FAILED });
           }
         }
-      } catch (verifyError) {
-        console.error('Failed to verify payment with Paystack:', verifyError);
+      } catch (verifyError: unknown) {
+        console.error('Failed to verify payment with Paystack:', (verifyError as Error).message || 'Unknown error');
       }
     }
 
     await payment.reload();
 
-     // Return payment details
-    return res.status(StatusCodes.OK).json({
+    res.status(StatusCodes.OK).json({
       success: true,
       message: 'Payment status retrieved successfully',
       data: {
@@ -200,11 +193,10 @@ class PaystackController {
     });
   });
 
-    // Get all payments with optional filtering & pagination
-  getAllPayments = asyncWrapper(async (req: Request, res: Response) => {
+  getAllPayments = asyncWrapper(async (req: Request, res: Response): Promise<void> => {
     const { status, limit = 10, offset = 0 } = req.query;
 
-    const whereClause: any = {};
+    const whereClause: Record<string, unknown> = {};
     if (status) {
       whereClause.status = status;
     }
@@ -216,8 +208,7 @@ class PaystackController {
       order: [['createdAt', 'DESC']],
     });
 
-     // Return payments with pagination info
-    return res.status(StatusCodes.OK).json({
+    res.status(StatusCodes.OK).json({
       success: true,
       message: 'Payments retrieved successfully',
       data: {
@@ -232,15 +223,13 @@ class PaystackController {
     });
   });
 
-  // Verify payment by reference query param
-  verifyPaymentByReference = asyncWrapper(async (req: Request, res: Response) => {
+  verifyPaymentByReference = asyncWrapper(async (req: Request, res: Response): Promise<void> => {
     const reference = req.query.reference as string;
 
     if (!reference) {
       throw new BadRequestError('Missing transaction reference');
     }
 
-    // Find payment by paymentReference
     const payment = await Payment.findOne({
       where: { paymentReference: reference },
     });
@@ -249,16 +238,13 @@ class PaystackController {
       throw new BadRequestError('Payment not found');
     }
 
-    // Verify payment status
-    const verificationResponse = await paystackApi.verifyPayment(reference);
+    const verificationResponse = await paystackApi.verifyPayment(reference) as unknown as PaystackVerificationResponse;
 
     if (!verificationResponse?.data) {
       throw new BadRequestError('Invalid payment verification response');
     }
 
-    const {
-      data: { status: transactionStatus },
-    } = verificationResponse;
+    const { data: { status: transactionStatus } } = verificationResponse;
 
     if (transactionStatus === 'success') {
       await payment.update({
@@ -266,7 +252,7 @@ class PaystackController {
         verified_at: new Date(),
       });
 
-      return res.status(StatusCodes.OK).json({
+      res.status(StatusCodes.OK).json({
         success: true,
         message: 'Payment verified successfully',
         data: {

@@ -1,16 +1,14 @@
 import { StatusCodes } from 'http-status-codes';
 import fetch, { BodyInit, RequestInit } from 'node-fetch';
-import { BadRequestError } from '../utils/ApiError';
+import { BadRequestError } from '../utils/ApiError.js';
 
 class BaseApi {
   baseUrl: string;
 
-  // Set base URL
   constructor(url: string) {
     this.baseUrl = url;
   }
 
-   // Main fetch function
   fetch = async (
     url: string,
     body?: BodyInit,
@@ -20,7 +18,6 @@ class BaseApi {
     try {
       const urlObj = new URL(url, this.baseUrl);
 
-       // Add query params if any
       if (args) {
         urlObj.search = new URLSearchParams(args).toString();
       }
@@ -29,47 +26,41 @@ class BaseApi {
 
       const response = await fetch(urlObj.toString(), requestOptions);
 
-       // Throw error if response is not ok
       if (!response.ok) {
         const errorMessage = await response.text();
         throw new BadRequestError(errorMessage);
       }
 
-       // Return nothing if no content
       if (response.status === StatusCodes.NO_CONTENT) {
         return;
       }
 
-      // Return response as JSON
       return response.json();
-    } catch (e: any) {
-      throw new BadRequestError(e.message);
+    } catch (e: unknown) {
+      throw new BadRequestError((e as Error).message || 'An unknown error occurred');
     }
   };
 
-  // GET request
   get = <T>(
     url: string,
-    args?: Record<string, any>,
+    args?: Record<string, string | number | boolean>,
     requestInit?: RequestInit
   ): Promise<T> =>
-    this.fetch(url, undefined, args, { ...requestInit, method: 'GET' });
+    this.fetch(url, undefined, args as Record<string, string>, { ...requestInit, method: 'GET' });
 
-  // POST request
-    post = <T>(
+  post = <T>(
     url: string,
-    body?: Record<string, any>,
-    args?: Record<string, any>,
+    body?: Record<string, unknown>,
+    args?: Record<string, string | number | boolean>,
     requestInit?: RequestInit
   ): Promise<T> => {
     const bodyString = body ? JSON.stringify(body) : undefined;
 
-    return this.fetch(url, bodyString, args, {
+    return this.fetch(url, bodyString, args as Record<string, string>, {
       ...requestInit,
       method: 'POST',
     });
   };
 }
 
-//Export class
 export default BaseApi;

@@ -1,6 +1,6 @@
-import config from '../config/config';
-import { convertObjectFromSnakeToCamelCase } from '../utils/snakeToCamelCase';
-import BaseApi from './baseApi';
+import config from '../config/config.js';
+import { convertObjectFromSnakeToCamelCase } from '../utils/snakeToCamelCase.js';
+import BaseApi from './baseApi.js';
 
 interface Metadata {
   email: string;
@@ -13,6 +13,7 @@ export interface InitializePaymentArgs {
   amount: number;
   callback_url?: string;
   metadata: Metadata;
+  [key: string]: string | number | boolean | Metadata | undefined;
 }
 
 interface PaystackAPIResponse<T> {
@@ -25,6 +26,7 @@ interface InitializePaymentResponse {
   authorizationUrl: string;
   accessCode: string;
   reference: string;
+  [key: string]: string;
 }
 
 interface VerifyPaymentResponse {
@@ -35,42 +37,36 @@ interface VerifyPaymentResponse {
 }
 
 class PaystackApi extends BaseApi {
-  // Set headers for requests
   requestInit = {
     headers: {
-      'Content-Type': 'application/json', // Fixed: lowercase 'application'
+      'Content-Type': 'application/json',
       authorization: `Bearer ${config.paystackSecret}`,
     },
   };
 
-  // Initialize with Paystack base URL
   constructor() {
     super(config.paystackUrl as string);
   }
 
-   // Start payment process
   initializePayment = async (paymentDetails: InitializePaymentArgs) => {
     try {
       const response = await this.post<
         PaystackAPIResponse<InitializePaymentResponse>
       >('/transaction/initialize', paymentDetails, undefined, this.requestInit);
 
-      // Add validation for response
       if (!response || !response.data) {
         throw new Error('Invalid response from Paystack API');
       }
 
-       // Convert keys from snake_case to camelCase
       return convertObjectFromSnakeToCamelCase<InitializePaymentResponse>(
         response.data
       );
-    } catch (error: any) {
+    } catch (error: unknown) { // Line 67: Changed 'any' to 'unknown'
       console.error('Paystack initialization error:', error);
-      throw new Error(`Failed to initialize payment: ${error.message}`);
+      throw new Error(`Failed to initialize payment: ${(error as Error).message || 'Unknown error'}`);
     }
   };
 
-   // Verify payment status by reference
   verifyPayment = async (paymentReference: string) => {
     try {
       if (!paymentReference) {
@@ -83,20 +79,18 @@ class PaystackApi extends BaseApi {
         this.requestInit
       );
 
-      // Add validation for response
       if (!response || !response.data) {
         throw new Error('Invalid response from Paystack API');
       }
 
       return response;
-    } catch (error: any) {
+    } catch (error: unknown) { // Line 92: Changed 'any' to 'unknown'
       console.error('Paystack verification error:', error);
-      throw new Error(`Failed to verify payment: ${error.message}`);
+      throw new Error(`Failed to verify payment: ${(error as Error).message || 'Unknown error'}`);
     }
   };
 }
 
-// Create and export instance
 const paystackApi = new PaystackApi();
 
 export default paystackApi;
