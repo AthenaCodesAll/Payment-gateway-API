@@ -3,36 +3,33 @@ const pluginJs = require("@eslint/js");
 const tseslint = require("typescript-eslint");
 
 module.exports = [
+  // Recommended configs applied globally
   pluginJs.configs.recommended,
   ...tseslint.configs.recommended,
 
+  
   {
+    files: ["src/**/*.ts", "src/**/*.tsx"],
     languageOptions: {
       parser: tseslint.parser,
       parserOptions: {
-        project: ['./tsconfig.json'],
+        project: ["./tsconfig.json"],
         tsconfigRootDir: __dirname,
         sourceType: "script", 
         ecmaVersion: 2022,
       },
       globals: {
-        ...globals.node, 
-      }
+        ...globals.node,
+      },
+    },
+    rules: {
+      
+      "@typescript-eslint/no-require-imports": "off",
     },
   },
 
+  
   {
-    rules: {
-      // Disable the no-require-imports rule to allow require() statements
-      "@typescript-eslint/no-require-imports": "off"
-    }
+    ignores: ["node_modules/", "dist/", "build/"],
   },
-
-  {
-    ignores: [
-      "node_modules/",
-      "dist/",
-      "build/"
-    ],
-  }
 ];
