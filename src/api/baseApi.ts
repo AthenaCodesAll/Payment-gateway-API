@@ -9,58 +9,71 @@ class BaseApi {
     this.baseUrl = url;
   }
 
-  fetch = async (
+  fetch<T>(
     url: string,
     body?: BodyInit,
     args?: Record<string, string>,
     requestInit?: RequestInit
-  ) => {
-    try {
-      const urlObj = new URL(url, this.baseUrl);
+  ): Promise<T> {
+    return (async () => {
+      try {
+        const urlObj = new URL(url, this.baseUrl);
 
-      if (args) {
-        urlObj.search = new URLSearchParams(args).toString();
+        if (args) {
+          urlObj.search = new URLSearchParams(args).toString();
+        }
+
+        const requestOptions = { ...requestInit, body };
+
+        const response = await fetch(urlObj.toString(), requestOptions);
+
+        if (!response.ok) {
+          const errorMessage = await response.text();
+          throw new BadRequestError(errorMessage);
+        }
+
+        if (response.status === StatusCodes.NO_CONTENT) {
+          return undefined as unknown as T; // safely cast `undefined` to T
+        }
+
+        return (await response.json()) as T;
+      } catch (e: unknown) {
+        throw new BadRequestError((e as Error).message || 'An unknown error occurred');
       }
+    })();
+  }
 
-      const requestOptions = { ...requestInit, body };
-
-      const response = await fetch(urlObj.toString(), requestOptions);
-
-      if (!response.ok) {
-        const errorMessage = await response.text();
-        throw new BadRequestError(errorMessage);
-      }
-
-      if (response.status === StatusCodes.NO_CONTENT) {
-        return;
-      }
-
-      return response.json();
-    } catch (e: unknown) {
-      throw new BadRequestError((e as Error).message || 'An unknown error occurred');
-    }
-  };
-
-  get = <T>(
+  get<T>(
     url: string,
     args?: Record<string, string | number | boolean>,
     requestInit?: RequestInit
-  ): Promise<T> =>
-    this.fetch(url, undefined, args as Record<string, string>, { ...requestInit, method: 'GET' });
+  ): Promise<T> {
+    const stringArgs = args
+      ? Object.fromEntries(Object.entries(args).map(([k, v]) => [k, String(v)]))
+      : undefined;
 
-  post = <T>(
+    return this.fetch<T>(url, undefined, stringArgs, {
+      ...requestInit,
+      method: 'GET',
+    });
+  }
+
+  post<T>(
     url: string,
     body?: Record<string, unknown>,
     args?: Record<string, string | number | boolean>,
     requestInit?: RequestInit
-  ): Promise<T> => {
+  ): Promise<T> {
     const bodyString = body ? JSON.stringify(body) : undefined;
+    const stringArgs = args
+      ? Object.fromEntries(Object.entries(args).map(([k, v]) => [k, String(v)]))
+      : undefined;
 
-    return this.fetch(url, bodyString, args as Record<string, string>, {
+    return this.fetch<T>(url, bodyString, stringArgs, {
       ...requestInit,
       method: 'POST',
     });
-  };
+  }
 }
 
 module.exports = BaseApi;
