@@ -1,8 +1,8 @@
-import globals from "globals";
-import pluginJs from "@eslint/js";
-import tseslint from "typescript-eslint";
+const globals = require("globals");
+const pluginJs = require("@eslint/js");
+const tseslint = require("typescript-eslint");
 
-export default [
+module.exports = [
   pluginJs.configs.recommended,
   ...tseslint.configs.recommended,
 
@@ -11,14 +11,21 @@ export default [
       parser: tseslint.parser,
       parserOptions: {
         project: ['./tsconfig.json'],
-        tsconfigRootDir: import.meta.dirname,
-        sourceType: "module", 
+        tsconfigRootDir: __dirname,
+        sourceType: "script", 
         ecmaVersion: 2022,
       },
       globals: {
         ...globals.node, 
       }
     },
+  },
+
+  {
+    rules: {
+      // Disable the no-require-imports rule to allow require() statements
+      "@typescript-eslint/no-require-imports": "off"
+    }
   },
 
   {

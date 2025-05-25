@@ -1,6 +1,6 @@
 import { StatusCodes } from 'http-status-codes';
 import fetch, { BodyInit, RequestInit } from 'node-fetch';
-import { BadRequestError } from '../utils/ApiError.js';
+import { BadRequestError } from '../utils/ApiError';
 
 class BaseApi {
   baseUrl: string;
@@ -63,4 +63,4 @@ class BaseApi {
   };
 }
 
-export default BaseApi;
+module.exports = BaseApi;

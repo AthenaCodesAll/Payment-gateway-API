@@ -1,7 +1,7 @@
 import request from "supertest";
-import app from "../index.js";
 import { Payment, PaymentStatus } from "../models/Payment.js";
-import connection from "../utils/database.js";
+const connection = require("../utils/database");
+const app = require("../index");
 
 // Mock Paystack API service to simulate external API responses during test
 jest.mock('../api/paystackApi', () => ({

@@ -1,5 +1,5 @@
-import { Sequelize } from 'sequelize-typescript';
-import config from '../config/config.js';
+const { Sequelize } = require('sequelize-typescript');
+const config = require('../config/config');
 
 const connection = new Sequelize({
   dialect: 'postgres',
@@ -11,4 +11,4 @@ const connection = new Sequelize({
   models: [__dirname + '/../models'],
 });
 
-export default connection;
+module.exports = connection;

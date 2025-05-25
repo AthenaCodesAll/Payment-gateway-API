@@ -14,4 +14,4 @@ const config = {
     paystackSecret: process.env.PAYSTACK_SECRET_KEY,
     paystackUrl: process.env.PAYSTACK_BASE_URL,
 };
-exports.default = config;
+module.exports = config;

@@ -1,25 +1,22 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
-const express_1 = __importDefault(require("express"));
-const express_validator_1 = require("express-validator");
-const paystack_js_1 = __importDefault(require("../controllers/paystack.js"));
-const rateLimiting_js_1 = require("../middlewares/rateLimiting.js");
-const paystackRoute = express_1.default.Router();
+const express = require('express');
+const { body, query } = require('express-validator');
+const paystackController = require('../controllers/paystack');
+const rateLimiting_1 = require("../middlewares/rateLimiting");
+const paystackRoute = express.Router();
 // Payment initialization with strict rate limiting 
-paystackRoute.post('/initialize', rateLimiting_js_1.paymentInitLimiter, [
-    (0, express_validator_1.body)('email').isEmail().withMessage('Invalid email'),
-    (0, express_validator_1.body)('amount').isInt({ gt: 0 }).withMessage('Amount must be greater than 0'),
-    (0, express_validator_1.body)('customer_name').notEmpty().withMessage('Customer name is required'),
-], paystack_js_1.default.initializePayment);
+paystackRoute.post('/initialize', rateLimiting_1.paymentInitLimiter, [
+    body('email').isEmail().withMessage('Invalid email'),
+    body('amount').isInt({ gt: 0 }).withMessage('Amount must be greater than 0'),
+    body('customer_name').notEmpty().withMessage('Customer name is required'),
+], paystackController.initializePayment);
 // Payment verification with moderate rate limiting
-paystackRoute.get('/verify', rateLimiting_js_1.paymentVerifyLimiter, [
-    (0, express_validator_1.query)('reference').notEmpty().withMessage('Reference is required'),
-], paystack_js_1.default.verifyPayment);
+paystackRoute.get('/verify', rateLimiting_1.paymentVerifyLimiter, [
+    query('reference').notEmpty().withMessage('Reference is required'),
+], paystackController.verifyPayment);
 // Payment status check with lenient rate limiting
-paystackRoute.get('/status/:id', rateLimiting_js_1.paymentStatusLimiter, [
-    (0, express_validator_1.query)('id').notEmpty().withMessage('Payment ID is required'),
-], paystack_js_1.default.getPaymentStatus);
-exports.default = paystackRoute;
+paystackRoute.get('/status/:id', rateLimiting_1.paymentStatusLimiter, [
+    query('id').notEmpty().withMessage('Payment ID is required'),
+], paystackController.getPaymentStatus);
+module.exports = paystackRoute;

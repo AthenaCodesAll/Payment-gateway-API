@@ -1,5 +1,5 @@
-import express from 'express';
-import paystackRoute from './paystack.js';
+const express = require('express');
+const paystackRoute = require('./paystack');
 
 const router = express.Router();
 
@@ -14,4 +14,4 @@ allRoutes.forEach((route) => {
   router.use(route.path, route.route);
 });
 
-export default router;
+module.exports = router;

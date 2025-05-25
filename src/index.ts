@@ -1,15 +1,23 @@
-import dotenv from 'dotenv';
-import bodyParser from 'body-parser';
-import express, { Application, NextFunction, Request, Response } from 'express';
-import cors from 'cors';
-import { NotFoundError } from './utils/ApiError.js';
-import { ErrorHandler } from './middlewares/ErrorHandler.js';
-import config from './config/config.js';
-import connection from './utils/database.js';
-import { StatusCodes } from 'http-status-codes';
-import router from './routes/index.js';
-import helmet from 'helmet';
-import { globalLimiter } from './middlewares/rateLimiting.js'; 
+const dotenv = require('dotenv');
+const bodyParser = require('body-parser');
+const express = require('express');
+const cors = require('cors');
+const { NotFoundError } = require('./utils/ApiError');
+const { ErrorHandler } = require('./middlewares/ErrorHandler');
+const config = require('./config/config');
+const connection = require('./utils/database');
+const { StatusCodes } = require('http-status-codes');
+const helmet = require('helmet');
+const { globalLimiter } = require('./middlewares/rateLimiting');
+
+// Debug the router import
+const router = require('./routes/index');
+console.log('🔍 Router imported:', router);
+console.log('🔍 Router type:', typeof router);
+console.log('🔍 Is function:', typeof router === 'function');
+
+// Type imports for TypeScript (these don't affect runtime)
+import type { Application, NextFunction, Request, Response } from 'express';
 
 dotenv.config();
 const app: Application = express();
@@ -67,4 +75,4 @@ const startServer = async () => {
 
 startServer();
 
-export default app;
+module.exports = app;

@@ -5,7 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const http_status_codes_1 = require("http-status-codes");
 const node_fetch_1 = __importDefault(require("node-fetch"));
-const ApiError_js_1 = require("../utils/ApiError.js");
+const ApiError_1 = require("../utils/ApiError");
 class BaseApi {
     constructor(url) {
         this.fetch = async (url, body, args, requestInit) => {
@@ -18,7 +18,7 @@ class BaseApi {
                 const response = await (0, node_fetch_1.default)(urlObj.toString(), requestOptions);
                 if (!response.ok) {
                     const errorMessage = await response.text();
-                    throw new ApiError_js_1.BadRequestError(errorMessage);
+                    throw new ApiError_1.BadRequestError(errorMessage);
                 }
                 if (response.status === http_status_codes_1.StatusCodes.NO_CONTENT) {
                     return;
@@ -26,7 +26,7 @@ class BaseApi {
                 return response.json();
             }
             catch (e) {
-                throw new ApiError_js_1.BadRequestError(e.message || 'An unknown error occurred');
+                throw new ApiError_1.BadRequestError(e.message || 'An unknown error occurred');
             }
         };
         this.get = (url, args, requestInit) => this.fetch(url, undefined, args, { ...requestInit, method: 'GET' });
@@ -40,4 +40,4 @@ class BaseApi {
         this.baseUrl = url;
     }
 }
-exports.default = BaseApi;
+module.exports = BaseApi;

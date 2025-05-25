@@ -4,9 +4,9 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const supertest_1 = __importDefault(require("supertest"));
-const index_js_1 = __importDefault(require("../index.js"));
 const Payment_js_1 = require("../models/Payment.js");
-const database_js_1 = __importDefault(require("../utils/database.js"));
+const connection = require("../utils/database");
+const app = require("../index");
 // Mock Paystack API service to simulate external API responses during test
 jest.mock('../api/paystackApi', () => ({
     __esModule: true,
@@ -34,11 +34,11 @@ describe('Payment Gateway API', () => {
     // Set up database connection and synchronize models before running tests
     beforeAll(async () => {
         process.env.NODE_ENV = 'test';
-        await database_js_1.default.authenticate();
-        await database_js_1.default.sync({ force: true });
+        await connection.authenticate();
+        await connection.sync({ force: true });
     });
     afterAll(async () => {
-        await database_js_1.default.close();
+        await connection.close();
     });
     beforeEach(async () => {
         await Payment_js_1.Payment.destroy({ where: {} });
@@ -52,7 +52,7 @@ describe('Payment Gateway API', () => {
             callbackUrl: 'http://localhost:5000/api/paystack/verify'
         };
         it('should initiate a payment successfully', async () => {
-            const res = await (0, supertest_1.default)(index_js_1.default)
+            const res = await (0, supertest_1.default)(app)
                 .post('/api/paystack/initialize')
                 .send(validPaymentData)
                 .expect(201);
@@ -74,7 +74,7 @@ describe('Payment Gateway API', () => {
         });
         it('should return 400 if required fields are missing', async () => {
             // Amount less than or equal to zero is invalid
-            const res = await (0, supertest_1.default)(index_js_1.default)
+            const res = await (0, supertest_1.default)(app)
                 .post('/api/paystack/initialize')
                 .send({ customer_name: 'John Doe' })
                 .expect(400);
@@ -85,7 +85,7 @@ describe('Payment Gateway API', () => {
         });
         it('should return 400 if amount is invalid', async () => {
             // Invalid email format triggers validation error
-            const res = await (0, supertest_1.default)(index_js_1.default)
+            const res = await (0, supertest_1.default)(app)
                 .post('/api/paystack/initialize')
                 .send({ ...validPaymentData, amount: -10 })
                 .expect(400);
@@ -95,7 +95,7 @@ describe('Payment Gateway API', () => {
             });
         });
         it('should return error for invalid email', async () => {
-            const res = await (0, supertest_1.default)(index_js_1.default)
+            const res = await (0, supertest_1.default)(app)
                 .post('/api/paystack/initialize')
                 .send({ ...validPaymentData, customer_email: 'invalid-email' })
                 .expect(400);
@@ -112,7 +112,7 @@ describe('Payment Gateway API', () => {
                 amount: 50.0,
                 callbackUrl: 'http://localhost:5000/api/paystack/verify'
             };
-            const res = await (0, supertest_1.default)(index_js_1.default)
+            const res = await (0, supertest_1.default)(app)
                 .post('/api/paystack/initialize')
                 .send(altPaymentData)
                 .expect(201);
@@ -135,7 +135,7 @@ describe('Payment Gateway API', () => {
             paymentReference = payment.paymentReference;
         });
         it('should verify payment successfully', async () => {
-            const res = await (0, supertest_1.default)(index_js_1.default)
+            const res = await (0, supertest_1.default)(app)
                 .get(`/api/paystack/verify?reference=${paymentReference}`)
                 .expect(200);
             expect(res.body).toMatchObject({
@@ -153,7 +153,7 @@ describe('Payment Gateway API', () => {
             });
         });
         it('should return error for missing reference', async () => {
-            const res = await (0, supertest_1.default)(index_js_1.default)
+            const res = await (0, supertest_1.default)(app)
                 .get('/api/paystack/verify')
                 .expect(400);
             expect(res.body).toMatchObject({
@@ -162,7 +162,7 @@ describe('Payment Gateway API', () => {
             });
         });
         it('should return error for invalid reference', async () => {
-            const res = await (0, supertest_1.default)(index_js_1.default)
+            const res = await (0, supertest_1.default)(app)
                 .get('/api/paystack/verify?reference=invalid_reference')
                 .expect(400);
             expect(res.body).toMatchObject({
@@ -187,7 +187,7 @@ describe('Payment Gateway API', () => {
             paymentId = payment.id;
         });
         it('should retrieve payment status successfully', async () => {
-            const res = await (0, supertest_1.default)(index_js_1.default)
+            const res = await (0, supertest_1.default)(app)
                 .get(`/api/paystack/status/${paymentId}`)
                 .expect(200);
             expect(res.body).toMatchObject({
@@ -205,7 +205,7 @@ describe('Payment Gateway API', () => {
             });
         });
         it('should return 400 for non-existent payment', async () => {
-            const res = await (0, supertest_1.default)(index_js_1.default)
+            const res = await (0, supertest_1.default)(app)
                 .get('/api/paystack/status/PAY-nonexistent')
                 .expect(400);
             expect(res.body).toMatchObject({
@@ -231,7 +231,7 @@ describe('Payment Gateway API', () => {
             paymentReference = payment.paymentReference;
         });
         it('should verify payment by reference successfully', async () => {
-            const res = await (0, supertest_1.default)(index_js_1.default)
+            const res = await (0, supertest_1.default)(app)
                 .get(`/api/paystack/verify-by-reference?reference=${paymentReference}`)
                 .expect(200);
             expect(res.body).toMatchObject({
@@ -274,7 +274,7 @@ describe('Payment Gateway API', () => {
             ]);
         });
         it('should retrieve all payments successfully', async () => {
-            const res = await (0, supertest_1.default)(index_js_1.default)
+            const res = await (0, supertest_1.default)(app)
                 .get('/api/paystack/payments')
                 .expect(200);
             expect(res.body).toMatchObject({
@@ -293,7 +293,7 @@ describe('Payment Gateway API', () => {
             expect(res.body.data.payments).toHaveLength(2);
         });
         it('should filter payments by status', async () => {
-            const res = await (0, supertest_1.default)(index_js_1.default)
+            const res = await (0, supertest_1.default)(app)
                 .get('/api/paystack/payments?status=completed')
                 .expect(200);
             expect(res.body.data.payments).toHaveLength(1);

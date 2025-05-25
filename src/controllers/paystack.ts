@@ -1,9 +1,10 @@
 import { Request, Response } from 'express';
 import { StatusCodes } from 'http-status-codes';
-import paystackApi, { InitializePaymentArgs } from '../api/paystackApi.js';
-import { Payment, PaymentStatus } from '../models/Payment.js';
-import { BadRequestError } from '../utils/ApiError.js';
-import { asyncWrapper } from '../utils/asyncWrapper.js';
+import { Payment, PaymentStatus } from '../models/Payment';
+import { BadRequestError } from '../utils/ApiError';
+import { asyncWrapper } from '../utils/asyncWrapper';
+const paystackApi = require('../api/paystackApi');
+import type { InitializePaymentArgs } from '../api/paystackApi';
 
 interface InitiatePaymentRequest {
   customerName: string;
@@ -271,4 +272,4 @@ class PaystackController {
 
 const paystackController = new PaystackController();
 
-export default paystackController;
+module.exports = paystackController;

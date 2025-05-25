@@ -1,11 +1,11 @@
-import express from 'express';
-import { body, query } from 'express-validator';
-import paystackController from '../controllers/paystack.js';
+const express = require('express');
+const { body, query } = require('express-validator');
+const paystackController = require('../controllers/paystack');
 import { 
   paymentInitLimiter, 
   paymentVerifyLimiter, 
   paymentStatusLimiter 
-} from '../middlewares/rateLimiting.js'; 
+} from '../middlewares/rateLimiting'; 
 
 const paystackRoute = express.Router();
 
@@ -41,4 +41,4 @@ paystackRoute.get(
   paystackController.getPaymentStatus
 );
 
-export default paystackRoute;
+module.exports = paystackRoute;

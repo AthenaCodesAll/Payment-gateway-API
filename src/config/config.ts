@@ -12,4 +12,4 @@ const config = {
   paystackUrl: process.env.PAYSTACK_BASE_URL,
 };
 
-export default config;
+module.exports = config;

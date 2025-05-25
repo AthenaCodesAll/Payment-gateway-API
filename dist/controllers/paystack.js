@@ -1,27 +1,24 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 const http_status_codes_1 = require("http-status-codes");
-const paystackApi_js_1 = __importDefault(require("../api/paystackApi.js"));
-const Payment_js_1 = require("../models/Payment.js");
-const ApiError_js_1 = require("../utils/ApiError.js");
-const asyncWrapper_js_1 = require("../utils/asyncWrapper.js");
+const Payment_1 = require("../models/Payment");
+const ApiError_1 = require("../utils/ApiError");
+const asyncWrapper_1 = require("../utils/asyncWrapper");
+const paystackApi = require('../api/paystackApi');
 class PaystackController {
     constructor() {
-        this.initializePayment = (0, asyncWrapper_js_1.asyncWrapper)(async (req, res) => {
+        this.initializePayment = (0, asyncWrapper_1.asyncWrapper)(async (req, res) => {
             const { customerName, customerEmail, amount, callbackUrl } = req.body;
             const finalEmail = customerEmail;
             if (!customerName || !finalEmail || !amount) {
-                throw new ApiError_js_1.BadRequestError('Customer name, email, and amount are required');
+                throw new ApiError_1.BadRequestError('Customer name, email, and amount are required');
             }
             if (amount <= 0 || isNaN(amount)) {
-                throw new ApiError_js_1.BadRequestError('Amount must be a positive number');
+                throw new ApiError_1.BadRequestError('Amount must be a positive number');
             }
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
             if (!emailRegex.test(finalEmail)) {
-                throw new ApiError_js_1.BadRequestError('Invalid email format');
+                throw new ApiError_1.BadRequestError('Invalid email format');
             }
             const normalizedEmail = finalEmail.toLowerCase().trim();
             const normalizedName = customerName.trim();
@@ -37,15 +34,15 @@ class PaystackController {
             };
             let payment;
             try {
-                const paystackResponse = await paystackApi_js_1.default.initializePayment(paymentDetails);
+                const paystackResponse = await paystackApi.initializePayment(paymentDetails);
                 if (!paystackResponse || !paystackResponse.reference) {
                     throw new Error('Invalid response from Paystack');
                 }
-                payment = await Payment_js_1.Payment.create({
+                payment = await Payment_1.Payment.create({
                     customerName: normalizedName,
                     customerEmail: normalizedEmail,
                     amount: Number(amount),
-                    status: Payment_js_1.PaymentStatus.PENDING,
+                    status: Payment_1.PaymentStatus.PENDING,
                     paymentReference: paystackResponse.reference,
                     authorizationUrl: paystackResponse.authorizationUrl,
                     accessCode: paystackResponse.accessCode,
@@ -67,28 +64,28 @@ class PaystackController {
             }
             catch (paystackError) {
                 if (payment) {
-                    await payment.update({ status: Payment_js_1.PaymentStatus.FAILED });
+                    await payment.update({ status: Payment_1.PaymentStatus.FAILED });
                 }
-                throw new ApiError_js_1.BadRequestError(`Failed to initialize payment: ${paystackError.message || 'Unknown error'}`);
+                throw new ApiError_1.BadRequestError(`Failed to initialize payment: ${paystackError.message || 'Unknown error'}`);
             }
         });
-        this.verifyPayment = (0, asyncWrapper_js_1.asyncWrapper)(async (req, res) => {
+        this.verifyPayment = (0, asyncWrapper_1.asyncWrapper)(async (req, res) => {
             const reference = req.query.reference;
             if (!reference) {
-                throw new ApiError_js_1.BadRequestError('Missing transaction reference');
+                throw new ApiError_1.BadRequestError('Missing transaction reference');
             }
-            const payment = await Payment_js_1.Payment.findByPk(reference);
+            const payment = await Payment_1.Payment.findByPk(reference);
             if (!payment) {
-                throw new ApiError_js_1.BadRequestError('Payment not found');
+                throw new ApiError_1.BadRequestError('Payment not found');
             }
-            const verificationResponse = await paystackApi_js_1.default.verifyPayment(reference);
+            const verificationResponse = await paystackApi.verifyPayment(reference);
             if (!verificationResponse?.data) {
-                throw new ApiError_js_1.BadRequestError('Invalid payment verification response');
+                throw new ApiError_1.BadRequestError('Invalid payment verification response');
             }
             const { data: { status: transactionStatus } } = verificationResponse;
             if (transactionStatus === 'success') {
                 await payment.update({
-                    status: Payment_js_1.PaymentStatus.COMPLETED,
+                    status: Payment_1.PaymentStatus.COMPLETED,
                     verified_at: new Date(),
                 });
                 res.status(http_status_codes_1.StatusCodes.OK).json({
@@ -100,37 +97,37 @@ class PaystackController {
                             customerName: payment.customerName,
                             customerEmail: payment.customerEmail,
                             amount: payment.amount,
-                            status: Payment_js_1.PaymentStatus.COMPLETED,
+                            status: Payment_1.PaymentStatus.COMPLETED,
                         },
                     },
                 });
             }
             else {
-                await payment.update({ status: Payment_js_1.PaymentStatus.FAILED });
-                throw new ApiError_js_1.BadRequestError(`Payment verification failed with status: ${transactionStatus}`);
+                await payment.update({ status: Payment_1.PaymentStatus.FAILED });
+                throw new ApiError_1.BadRequestError(`Payment verification failed with status: ${transactionStatus}`);
             }
         });
-        this.getPaymentStatus = (0, asyncWrapper_js_1.asyncWrapper)(async (req, res) => {
+        this.getPaymentStatus = (0, asyncWrapper_1.asyncWrapper)(async (req, res) => {
             const { id } = req.params;
             if (!id) {
-                throw new ApiError_js_1.BadRequestError('Payment ID is required');
+                throw new ApiError_1.BadRequestError('Payment ID is required');
             }
-            const payment = await Payment_js_1.Payment.findByPk(id);
+            const payment = await Payment_1.Payment.findByPk(id);
             if (!payment) {
-                throw new ApiError_js_1.BadRequestError('Payment not found');
+                throw new ApiError_1.BadRequestError('Payment not found');
             }
-            if (payment.paymentReference && payment.status === Payment_js_1.PaymentStatus.PENDING) {
+            if (payment.paymentReference && payment.status === Payment_1.PaymentStatus.PENDING) {
                 try {
-                    const verificationResponse = await paystackApi_js_1.default.verifyPayment(payment.paymentReference);
+                    const verificationResponse = await paystackApi.verifyPayment(payment.paymentReference);
                     if (verificationResponse?.data) {
                         if (verificationResponse.data.status === 'success') {
                             await payment.update({
-                                status: Payment_js_1.PaymentStatus.COMPLETED,
+                                status: Payment_1.PaymentStatus.COMPLETED,
                                 verified_at: new Date(),
                             });
                         }
                         else if (verificationResponse.data.status === 'failed') {
-                            await payment.update({ status: Payment_js_1.PaymentStatus.FAILED });
+                            await payment.update({ status: Payment_1.PaymentStatus.FAILED });
                         }
                     }
                 }
@@ -153,13 +150,13 @@ class PaystackController {
                 },
             });
         });
-        this.getAllPayments = (0, asyncWrapper_js_1.asyncWrapper)(async (req, res) => {
+        this.getAllPayments = (0, asyncWrapper_1.asyncWrapper)(async (req, res) => {
             const { status, limit = 10, offset = 0 } = req.query;
             const whereClause = {};
             if (status) {
                 whereClause.status = status;
             }
-            const payments = await Payment_js_1.Payment.findAndCountAll({
+            const payments = await Payment_1.Payment.findAndCountAll({
                 where: whereClause,
                 limit: Number(limit),
                 offset: Number(offset),
@@ -179,25 +176,25 @@ class PaystackController {
                 },
             });
         });
-        this.verifyPaymentByReference = (0, asyncWrapper_js_1.asyncWrapper)(async (req, res) => {
+        this.verifyPaymentByReference = (0, asyncWrapper_1.asyncWrapper)(async (req, res) => {
             const reference = req.query.reference;
             if (!reference) {
-                throw new ApiError_js_1.BadRequestError('Missing transaction reference');
+                throw new ApiError_1.BadRequestError('Missing transaction reference');
             }
-            const payment = await Payment_js_1.Payment.findOne({
+            const payment = await Payment_1.Payment.findOne({
                 where: { paymentReference: reference },
             });
             if (!payment) {
-                throw new ApiError_js_1.BadRequestError('Payment not found');
+                throw new ApiError_1.BadRequestError('Payment not found');
             }
-            const verificationResponse = await paystackApi_js_1.default.verifyPayment(reference);
+            const verificationResponse = await paystackApi.verifyPayment(reference);
             if (!verificationResponse?.data) {
-                throw new ApiError_js_1.BadRequestError('Invalid payment verification response');
+                throw new ApiError_1.BadRequestError('Invalid payment verification response');
             }
             const { data: { status: transactionStatus } } = verificationResponse;
             if (transactionStatus === 'success') {
                 await payment.update({
-                    status: Payment_js_1.PaymentStatus.COMPLETED,
+                    status: Payment_1.PaymentStatus.COMPLETED,
                     verified_at: new Date(),
                 });
                 res.status(http_status_codes_1.StatusCodes.OK).json({
@@ -206,17 +203,17 @@ class PaystackController {
                     data: {
                         payment: {
                             id: payment.id,
-                            status: Payment_js_1.PaymentStatus.COMPLETED,
+                            status: Payment_1.PaymentStatus.COMPLETED,
                         },
                     },
                 });
             }
             else {
-                await payment.update({ status: Payment_js_1.PaymentStatus.FAILED });
-                throw new ApiError_js_1.BadRequestError(`Payment verification failed with status: ${transactionStatus}`);
+                await payment.update({ status: Payment_1.PaymentStatus.FAILED });
+                throw new ApiError_1.BadRequestError(`Payment verification failed with status: ${transactionStatus}`);
             }
         });
     }
 }
 const paystackController = new PaystackController();
-exports.default = paystackController;
+module.exports = paystackController;
